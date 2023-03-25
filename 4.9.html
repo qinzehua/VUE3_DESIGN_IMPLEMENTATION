@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      const obj = { foo: 1, bar: { name: "qqq" } };
+
+      const bucket = new WeakMap();
+      let activeEffect = null;
+
+      const effectsStack = [];
+
+      const data = new Proxy(obj, {
+        get(target, key) {
+          track(target, key);
+          return target[key];
+        },
+        set(target, key, value) {
+          target[key] = value;
+          trigger(target, key);
+        },
+      });
+
+      function track(target, key) {
+        if (!activeEffect) return true;
+        let depsMap = bucket.get(target);
+        if (!depsMap) {
+          bucket.set(target, (depsMap = new Map()));
+        }
+        let deps = depsMap.get(key);
+        if (!deps) {
+          depsMap.set(key, (deps = new Set()));
+        }
+        deps.add(activeEffect);
+        activeEffect.deps.push(deps);
+      }
+
+      function trigger(target, key) {
+        const depsMap = bucket.get(target);
+        if (!depsMap) return true;
+        const effects = depsMap.get(key);
+        const newEffects = new Set(effects);
+        const effectsToRuns = new Set();
+        newEffects &&
+          newEffects.forEach((effect) => {
+            if (effect !== activeEffect) effectsToRuns.add(effect);
+          });
+
+        effectsToRuns.forEach((effect) => {
+          if (effect.options.shedule) {
+            effect.options.shedule(effect);
+          } else {
+            effect();
+          }
+        });
+      }
+
+      function clearnUp(effectFn) {
+        effectFn.deps.forEach((deps) => {
+          deps.delete(effectFn);
+        });
+        effectFn.deps.length = 0;
+      }
+
+      function effect(fn, options = {}) {
+        let effectFn = () => {
+          clearnUp(effectFn);
+          activeEffect = effectFn;
+          effectsStack.push(activeEffect);
+          const res = fn();
+          effectsStack.pop();
+          activeEffect = effectsStack[effectsStack.length - 1];
+
+          return res;
+        };
+        effectFn.deps = [];
+        effectFn.options = options;
+        if (!options.lazy) {
+          effectFn();
+        }
+        return effectFn;
+      }
+
+      function computed(getter) {
+        let dirtied = true;
+        let value = null;
+        const effectFn = effect(getter, {
+          lazy: true,
+          shedule: () => {
+            if (!dirtied) {
+              dirtied = true;
+              trigger(obj, "value");
+            }
+          },
+        });
+
+        const obj = {
+          get value() {
+            if (dirtied) {
+              value = effectFn();
+              dirtied = false;
+            }
+            track(obj, "value");
+            return value;
+          },
+        };
+
+        return obj;
+      }
+
+      function traverse(value, seen = new Set()) {
+        if (typeof value !== "object" || value === null || seen.has(value))
+          return value;
+
+        seen.add(value);
+
+        for (const key in value) {
+          traverse(value[key], seen);
+        }
+        return value;
+      }
+      function watch(source, callbakc) {
+        let getter;
+
+        if (typeof source === "function") {
+          getter = source;
+        } else {
+          getter = () => traverse(source);
+        }
+
+        let oldValue;
+
+        const effectFn = effect(() => getter(), {
+          shedule: (fn) => {
+            const newValue = fn();
+            callbakc(newValue, oldValue);
+            oldValue = newValue;
+          },
+          lazy: true,
+        });
+
+        oldValue = effectFn();
+      }
+
+      watch(
+        () => data.foo,
+        (d1, d2) => {
+          console.log(d1);
+          root.innerHTML = d1;
+        }
+      );
+
+      setTimeout(() => {
+        data.foo = "qqq";
+      }, 1000);
+    </script>
+  </body>
+</html>

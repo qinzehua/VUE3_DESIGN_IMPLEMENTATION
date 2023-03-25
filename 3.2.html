@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      function renderer(vnode, root) {
+        const { tag } = vnode;
+        if (typeof tag === "string") {
+          mountElement(vnode, root);
+        } else if (typeof tag === "function") {
+          mountComponent(vnode, root);
+        }
+      }
+
+      function applyProps(element, props) {
+        for (const key in props) {
+          if (key === "class") {
+            element.className = props[key];
+          } else if (key === "style") {
+            const style = props[key];
+            for (const key in style) {
+              element.style[key] = style[key];
+            }
+          } else if (/^on/.test(key)) {
+            element.addEventListener(key.substr(2).toLowerCase(), props[key]);
+          } else {
+            element.setAttribute(key, props[key]);
+          }
+        }
+      }
+
+      function mountElement(vnode, root) {
+        const { tag, props, children } = vnode;
+        const element = document.createElement(tag);
+        applyProps(element, props);
+        if (typeof children === "string") {
+          element.appendChild(document.createTextNode(children));
+        } else if (Array.isArray(children)) {
+          children.forEach((child) => renderer(child, element));
+        }
+        root.appendChild(element);
+      }
+
+      function mountComponent(vnode, root) {
+        const subtree = vnode.tag();
+        renderer(subtree, root);
+      }
+
+      const vnode = {
+        tag: "div",
+        props: {
+          class: "layout",
+          style: {
+            width: "200px",
+            height: "200px",
+            backgroundColor: "yellow",
+          },
+          onClick: () => {
+            console.log("---");
+          },
+        },
+        children: [
+          { tag: "span", children: "hello" },
+          { tag: "span", children: "world" },
+          {
+            tag: function Counter() {
+              return {
+                tag: "button",
+                props: {
+                  style: {
+                    border: "1px solid",
+                    backgroundColor: "blue",
+                    color: "white",
+                  },
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    console.log("--counter--");
+                  },
+                },
+                children: "counter",
+              };
+            },
+          },
+        ],
+      };
+
+      renderer(vnode, document.getElementById("root"));
+    </script>
+  </body>
+</html>
