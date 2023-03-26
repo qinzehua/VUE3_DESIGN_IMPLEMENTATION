@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      const obj = {
+        bar: 1,
+        info: {
+          age: 31,
+          name: "qqq",
+        },
+      };
+
+      const bucket = new WeakMap();
+      let activeEffect = null;
+      const effectsStack = [];
+      const ITERATE_KEY = Symbol("iterate");
+      const TriggerType = {
+        ADD: "ADD",
+        SET: "SET",
+        DELETE: "DELETE",
+      };
+
+      function reactive() {
+        return createReactive(obj);
+      }
+
+      function shallowReactive() {
+        return createReactive(obj, true);
+      }
+
+      function createReactive(source, isShallow = false) {
+        return new Proxy(source, {
+          get(target, key, receiver) {
+            if (key === "raw") return target;
+            const res = Reflect.get(target, key, receiver);
+            track(target, key);
+
+            if (isShallow) {
+              return res;
+            } else {
+              if (typeof res == "object" && res !== null) {
+                return createReactive(res);
+              } else {
+                return res;
+              }
+            }
+          },
+          has(target, key) {
+            track(target, key);
+            return Reflect.has(target, key);
+          },
+          ownKeys(target) {
+            track(target, ITERATE_KEY);
+            return Reflect.ownKeys(target);
+          },
+          set(target, key, value, receiver) {
+            const oldValue = target[key];
+            const type = Object.prototype.hasOwnProperty.call(target, key)
+              ? TriggerType.SET
+              : TriggerType.ADD;
+            Reflect.set(target, key, value, receiver);
+
+            if (target === receiver.raw) {
+              trigger(target, key, type);
+            }
+          },
+          deleteProperty(target, key) {
+            const hadKey = Object.prototype.hasOwnProperty.call(target, key);
+            const res = Reflect.deleteProperty(target, key);
+            if (hadKey && res) {
+              trigger(target, key, TriggerType.DELETE);
+            }
+          },
+        });
+      }
+
+      function track(target, key) {
+        if (!activeEffect) return true;
+        let depsMap = bucket.get(target);
+        if (!depsMap) {
+          bucket.set(target, (depsMap = new Map()));
+        }
+        let deps = depsMap.get(key);
+        if (!deps) {
+          depsMap.set(key, (deps = new Set()));
+        }
+        deps.add(activeEffect);
+        activeEffect.deps.push(deps);
+      }
+
+      function trigger(target, key, type) {
+        const depsMap = bucket.get(target);
+        if (!depsMap) return true;
+        const effects = depsMap.get(key);
+        const iterateEffects = depsMap.get(ITERATE_KEY);
+        const effectsToRuns = new Set();
+
+        effects &&
+          effects.forEach((effect) => {
+            if (effect !== activeEffect) effectsToRuns.add(effect);
+          });
+
+        if (type === TriggerType.ADD || type === TriggerType.DELETE) {
+          iterateEffects &&
+            iterateEffects.forEach((effect) => {
+              if (effect !== activeEffect) effectsToRuns.add(effect);
+            });
+        }
+
+        effectsToRuns.forEach((effect) => {
+          if (effect.options.shedule) {
+            effect.options.shedule(effect);
+          } else {
+            effect();
+          }
+        });
+      }
+
+      function clearnUp(effectFn) {
+        effectFn.deps.forEach((deps) => {
+          deps.delete(effectFn);
+        });
+        effectFn.deps.length = 0;
+      }
+
+      function effect(fn, options = {}) {
+        let effectFn = () => {
+          clearnUp(effectFn);
+          activeEffect = effectFn;
+          effectsStack.push(activeEffect);
+          const res = fn();
+          effectsStack.pop();
+          activeEffect = effectsStack[effectsStack.length - 1];
+
+          return res;
+        };
+        effectFn.deps = [];
+        effectFn.options = options;
+        if (!options.lazy) {
+          return effectFn();
+        }
+        return effectFn;
+      }
+
+      function computed(getter) {
+        let dirtied = true;
+        let value = null;
+        const effectFn = effect(getter, {
+          lazy: true,
+          shedule: () => {
+            if (!dirtied) {
+              dirtied = true;
+              trigger(obj, "value");
+            }
+          },
+        });
+
+        const obj = {
+          get value() {
+            if (dirtied) {
+              value = effectFn();
+              dirtied = false;
+            }
+            track(obj, "value");
+            return value;
+          },
+        };
+
+        return obj;
+      }
+
+      function traverse(value, seen = new Set()) {
+        if (typeof value !== "object" || value === null || seen.has(value))
+          return value;
+
+        seen.add(value);
+
+        for (const key in value) {
+          traverse(value[key], seen);
+        }
+        return value;
+      }
+      function watch(source, callback, options) {
+        let getter;
+        let oldValue;
+        let cleanup;
+
+        function onInvalidate(fn) {
+          cleanup = fn;
+        }
+
+        if (typeof source === "function") {
+          getter = source;
+        } else {
+          getter = () => traverse(source);
+        }
+
+        function job() {
+          if (cleanup) {
+            cleanup();
+          }
+          const newValue = effectFn();
+          callback(newValue, oldValue, onInvalidate);
+          oldValue = newValue;
+        }
+
+        const effectFn = effect(() => getter(), {
+          lazy: true,
+          shedule: () => {
+            if (options.flush === "post") {
+              Promise.resolve().then(job);
+            } else {
+              job();
+            }
+          },
+        });
+
+        if (options.immediate) {
+          job(effectFn);
+        } else {
+          oldValue = effectFn();
+        }
+      }
+
+      const state = reactive(obj);
+      effect(() => {
+        root.innerHTML = "bar: " + state.bar + ", age: " + state.info.age;
+      });
+
+      setTimeout(() => {
+        // state.bar = 18;
+      }, 2000);
+    </script>
+  </body>
+</html>
