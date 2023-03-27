@@ -19,18 +19,44 @@
         DELETE: "DELETE",
       };
 
+      const reactiveMap = new Map();
+
       function reactive(obj) {
-        return createReactive(obj);
+        const existProxy = reactiveMap.get(obj);
+        if (existProxy) return existProxy;
+        const proxy = createReactive(obj);
+        reactiveMap.set(obj, proxy);
+        return proxy;
       }
 
       function shallowReactive(obj) {
         return createReactive(obj, true);
       }
 
+      const arrInstrucmentations = {};
+      ["includes", "indexOf", "lastIndexOf"].forEach((method) => {
+        const originMeth = Array.prototype[method];
+        arrInstrucmentations[method] = function (...args) {
+          let res = originMeth.apply(this, args);
+          if (!res) {
+            res = originMeth.apply(this.raw, args);
+          }
+
+          return res;
+        };
+      });
       function createReactive(source, isShallow = false) {
         return new Proxy(source, {
           get(target, key, receiver) {
             if (key === "raw") return target;
+
+            if (
+              Array.isArray(target) &&
+              arrInstrucmentations.hasOwnProperty(key)
+            ) {
+              return Reflect.get(arrInstrucmentations, key, receiver);
+            }
+
             const res = Reflect.get(target, key, receiver);
 
             if (typeof key !== "symbol") {
@@ -41,7 +67,7 @@
               return res;
             } else {
               if (typeof res == "object" && res !== null) {
-                return createReactive(res);
+                return reactive(res);
               } else {
                 return res;
               }
@@ -248,16 +274,16 @@
         }
       }
 
-      const oarr = ["foo"];
+      const oarr = [{ age: 30 }, "bar"];
       const state = reactive(oarr);
-      effect(() => {
-        for (const key in state) {
-          console.log(key);
-        }
-      });
+      // effect(() => {
+      //   for (const value of state) {
+      //     console.log(value);
+      //   }
+      // });
 
       setTimeout(() => {
-        state[10] = "bar";
+        console.log(state.includes(oarr[0]));
       }, 2000);
     </script>
   </body>
