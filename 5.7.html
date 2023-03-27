@@ -34,6 +34,8 @@
       }
 
       const arrInstrucmentations = {};
+      let shouldTrack = true;
+
       ["includes", "indexOf", "lastIndexOf"].forEach((method) => {
         const originMeth = Array.prototype[method];
         arrInstrucmentations[method] = function (...args) {
@@ -41,6 +43,17 @@
           if (!res) {
             res = originMeth.apply(this.raw, args);
           }
+
+          return res;
+        };
+      });
+
+      ["push", "pop", "shift", "unshift", "splice"].forEach((method) => {
+        const originMeth = Array.prototype[method];
+        arrInstrucmentations[method] = function (...args) {
+          shouldTrack = false;
+          const res = originMeth.apply(this, args);
+          shouldTrack = true;
 
           return res;
         };
@@ -91,11 +104,13 @@
               : Object.prototype.hasOwnProperty.call(target, key)
               ? TriggerType.SET
               : TriggerType.ADD;
-            Reflect.set(target, key, newValue, receiver);
+            const res = Reflect.set(target, key, newValue, receiver);
 
             if (target === receiver.raw) {
               trigger(target, key, type, newValue);
             }
+
+            return res;
           },
           deleteProperty(target, key) {
             const hadKey = Object.prototype.hasOwnProperty.call(target, key);
@@ -276,14 +291,13 @@
 
       const oarr = [{ age: 30 }, "bar"];
       const state = reactive(oarr);
-      // effect(() => {
-      //   for (const value of state) {
-      //     console.log(value);
-      //   }
-      // });
+      effect(() => {
+        console.log("push");
+        state.push(1);
+      });
 
       setTimeout(() => {
-        console.log(state.includes(oarr[0]));
+        state.length = 5;
       }, 2000);
     </script>
   </body>
