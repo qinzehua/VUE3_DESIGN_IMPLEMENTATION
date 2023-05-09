@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      .icons {
+        color: #ffcb77;
+      }
+      .red {
+        font-size: 30px;
+      }
+
+      svg path {
+        fill: inherit !important;
+        color: currentColor;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="icons">
+      <svg
+        class="red"
+        width="14"
+        height="13"
+        viewBox="0 0 14 13"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M1 0.333344C0.739715 0.333344 0.503229 0.484831 0.394403 0.721279C0.285577 0.957726 0.324314 1.23589 0.493604 1.4336L5.13334 6.85243V10.8147C5.13334 11.0684 5.27733 11.3001 5.50479 11.4124L7.90479 12.5977C8.11143 12.6998 8.35613 12.6879 8.55188 12.5663C8.74763 12.4446 8.86667 12.2305 8.86667 12V6.85243L13.5064 1.4336C13.6757 1.23589 13.7144 0.957726 13.6056 0.721279C13.4968 0.484831 13.2603 0.333344 13 0.333344H1Z"
+        />
+      </svg>
+      <svg
+        class="red"
+        width="14"
+        height="13"
+        viewBox="0 0 14 13"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M0.999997 0.333344C0.739708 0.333344 0.503221 0.484831 0.394395 0.721279C0.285569 0.957726 0.324307 1.23589 0.493596 1.4336L5.13333 6.85243V10.8147C5.13333 11.0684 5.27732 11.3001 5.50478 11.4124L7.90478 12.5977C8.11142 12.6998 8.35612 12.6879 8.55187 12.5663C8.74763 12.4446 8.86666 12.2305 8.86666 12V6.85243L13.5064 1.4336C13.6757 1.23589 13.7144 0.957726 13.6056 0.721279C13.4968 0.484831 13.2603 0.333344 13 0.333344H0.999997Z"
+          fill-opacity="0.5"
+        />
+      </svg>
+    </div>
+    <div id="root"></div>
+    <script>
+      function createRenderer(renderOptions) {
+        const { createElement, setElementText, insert, patchProps } =
+          renderOptions;
+
+        function mountElement(vnode, container, anchor) {
+          const { tag, props, children } = vnode;
+          const element = (vnode.el = createElement(tag));
+          if (props) {
+            for (const key in props) {
+              patchProps(element, key, null, props[key]);
+            }
+          }
+
+          if (typeof children === "string") {
+            setElementText(element, children);
+          } else if (Array.isArray(children)) {
+            children.forEach((child) => patch(null, child, element));
+          }
+          insert(element, container, anchor);
+        }
+
+        function mountComponent(vnode, container) {
+          const subtree = vnode.tag();
+          patch(null, subtree, container);
+        }
+
+        function patch(oldVnode, vnode, container, anchor) {
+          if (oldVnode && oldVnode.tag !== vnode.tag) {
+            unmount(oldVnode);
+            oldVnode = null;
+          }
+
+          const { tag } = vnode;
+
+          if (typeof tag === "string") {
+            if (!oldVnode) {
+              mountElement(vnode, container, anchor);
+            } else {
+              patchElement(oldVnode, vnode, container);
+            }
+          } else if (typeof tag === "function") {
+            mountComponent(vnode, container);
+          }
+        }
+
+        function patchElement(oldVnode, vnode, container) {
+          const el = (vnode.el = oldVnode.el);
+          const oldProps = oldVnode.props || {};
+          const newProps = vnode.props || {};
+
+          for (const key in newProps) {
+            const oldValue = oldProps[key];
+            const newValue = newProps[key];
+            if (oldValue !== newValue) {
+              patchProps(el, key, oldValue, newValue);
+            }
+          }
+
+          for (const key in oldProps) {
+            if (!(key in newProps)) {
+              patchProps(el, key, oldProps[key], null);
+            }
+          }
+
+          patchChildren(oldVnode, vnode, el);
+        }
+
+        function patchChildren(oldVnode, vnode, container) {
+          const oldCh = oldVnode.children;
+          const newCh = vnode.children;
+
+          if (typeof newCh === "string") {
+            if (Array.isArray(oldCh)) {
+              oldCh.forEach((child) => {
+                unmount(child);
+              });
+            }
+            setElementText(container, newCh);
+          } else if (Array.isArray(newCh)) {
+            if (typeof oldCh === "string") {
+              setElementText(container, "");
+              newCh.forEach((child) => {
+                patch(null, child, container);
+              });
+            } else if (Array.isArray(oldCh)) {
+              patchKeyedChildren(oldCh, newCh, container);
+            }
+          } else {
+            if (Array.isArray(oldCh)) {
+              oldCh.forEach((child) => {
+                unmount(child);
+              });
+            } else if (typeof oldCh === "string") {
+              setElementText(container, "");
+            }
+          }
+        }
+
+        function patchKeyedChildren(oldCh, newCh, container) {
+          let oldStartIdx = 0;
+          let oldEndIdx = oldCh.length - 1;
+          let newStartIdx = 0;
+          let newEndIdx = newCh.length - 1;
+
+          let oldStartVnode = oldCh[oldStartIdx];
+          let oldEndVnode = oldCh[oldEndIdx];
+          let newStartVnode = newCh[newStartIdx];
+          let newEndVnode = newCh[newEndIdx];
+
+          while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
+            if (!oldStartVnode) {
+              oldStartVnode = oldCh[++oldStartIdx];
+            } else if (!oldEndVnode) {
+              oldEndVnode = oldCh[--oldEndIdx];
+            } else if (oldStartVnode.key === newStartVnode.key) {
+              patch(oldStartVnode, newStartVnode, container);
+              oldStartVnode = oldCh[++oldStartIdx];
+              newStartVnode = newCh[++newStartIdx];
+            } else if (oldEndVnode.key === newEndVnode.key) {
+              patch(oldEndVnode, newEndVnode, container);
+              oldEndVnode = oldCh[--oldEndIdx];
+              newEndVnode = newCh[--newEndIdx];
+            } else if (oldStartVnode.key === newEndVnode.key) {
+              patch(oldStartVnode, newEndVnode, container);
+              insert(oldStartVnode.el, container, oldEndVnode.el.nextSibling);
+              oldStartVnode = oldCh[++oldStartIdx];
+              newEndVnode = newCh[--newEndIdx];
+            } else if (oldEndVnode.key === newStartVnode.key) {
+              patch(oldEndVnode, newStartVnode, container);
+              insert(oldEndVnode.el, container, oldStartVnode.el);
+
+              oldEndVnode = oldCh[--oldEndIdx];
+              newStartVnode = newCh[++newStartIdx];
+            } else {
+              const oldIdx = oldCh.findIndex(
+                (node) => node.key === newStartVnode.key
+              );
+
+              if (oldIdx >= 0) {
+                const vnodeToMove = oldCh[oldIdx];
+                patch(vnodeToMove, newStartVnode, container);
+                insert(vnodeToMove.el, container, oldStartVnode.el);
+                oldCh[oldIdx] = undefined;
+              } else {
+                patch(null, newStartVnode, container, oldStartVnode.el);
+              }
+              newStartVnode = newCh[++newStartIdx];
+            }
+          }
+
+          if (oldEndIdx < oldStartIdx && newStartIdx <= newEndIdx) {
+            for (let i = newStartIdx; i <= newEndIdx; i++) {
+              patch(null, newCh[i], container, oldStartVnode.el);
+            }
+          } else if (newEndIdx < newStartIdx && oldStartIdx <= oldEndIdx) {
+            for (let i = oldStartIdx; i <= oldEndIdx; i++) {
+              if (oldCh[i]) {
+                unmount(oldCh[i]);
+              }
+            }
+          }
+        }
+
+        function unmount(vnode) {
+          const parent = vnode.el.parentNode;
+          if (parent) {
+            parent.removeChild(vnode.el);
+          }
+        }
+
+        function render(vnode, container) {
+          if (vnode) {
+            patch(container._vnode, vnode, container);
+          } else {
+            if (container._vnode) {
+              unmount(container._vnode);
+            }
+          }
+          container._vnode = vnode;
+        }
+
+        return {
+          render,
+        };
+      }
+
+      const oldVnode = {
+        tag: "div",
+        children: [
+          { tag: "p", children: "1", key: 1 },
+          { tag: "p", children: "2", key: 2 },
+          { tag: "p", children: "3", key: 3 },
+        ],
+      };
+
+      const newVnode = {
+        tag: "div",
+        children: [
+          { tag: "p", children: "4", key: 4 },
+          { tag: "p", children: "2", key: 2 },
+        ],
+      };
+
+      const renderer = createRenderer({
+        createElement(tag) {
+          return document.createElement(tag);
+        },
+        setElementText(node, text) {
+          node.textContent = text;
+        },
+        insert(child, parent, anchor) {
+          parent.insertBefore(child, anchor || null);
+        },
+        patchProps(element, key, preValue, nextValue) {
+          if (key === "class") {
+            element.className = nextValue;
+          } else if (key === "style") {
+            const style = nextValue;
+            for (const key in style) {
+              element.style[key] = style[key];
+            }
+          } else if (/^on/.test(key)) {
+            const invokers = element._vei || (element._vei = {});
+            let invoker = invokers[key];
+            const name = key.slice(2).toLowerCase();
+
+            if (nextValue) {
+              if (!invoker) {
+                invoker = (e) => {
+                  if (e.timeStamp < invoker.attached) return;
+                  if (Array.isArray(invoker.value)) {
+                    invoker.value.forEach((fn) => fn(e));
+                  } else {
+                    invoker.value(e);
+                  }
+                };
+                invokers[key] = invoker;
+                invoker.value = nextValue;
+                element.addEventListener(name, invoker);
+              } else {
+                invoker.value = nextValue;
+              }
+            } else if (invoker) {
+              element.removeEventListener(name, invoker);
+            }
+          } else {
+            element.setAttribute(key, nextValue);
+          }
+        },
+      });
+      renderer.render(oldVnode, document.getElementById("root"));
+
+      setTimeout(() => {
+        renderer.render(newVnode, document.getElementById("root"));
+      }, 1000);
+    </script>
+  </body>
+</html>

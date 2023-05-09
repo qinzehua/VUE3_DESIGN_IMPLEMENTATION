@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      .icons {
+        color: #ffcb77;
+      }
+      .red {
+        font-size: 30px;
+      }
+
+      svg path {
+        fill: inherit !important;
+        color: currentColor;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module">
+      import { createRenderer } from "./render.js";
+
+      const MyComponent = {
+        data() {
+          return {
+            name: "qzh",
+          };
+        },
+        render() {
+          return {
+            tag: "p",
+            children: `我的名字是: ${this.name}, 我的年龄是: ${this.age}`,
+            key: 4,
+            props: {
+              onClick() {
+                console.log(this.name);
+              },
+            },
+          };
+        },
+        props: {
+          age: Number,
+        },
+      };
+
+      const App = {
+        data() {
+          return {
+            age: 18,
+          };
+        },
+        mounted() {
+          setTimeout(() => {
+            this.age = 20;
+          }, 2000);
+        },
+
+        render() {
+          return {
+            tag: "div",
+            props: {
+              style: {
+                background: "#ccc",
+              },
+            },
+            children: [
+              {
+                tag: "h1",
+                children: "hello world",
+                key: 1,
+                props: {
+                  class: "red",
+                },
+              },
+              {
+                tag: MyComponent,
+                key: 2,
+                props: {
+                  age: this.age,
+                },
+              },
+            ],
+          };
+        },
+      };
+
+      const oldVnode = {
+        tag: App,
+      };
+
+      const renderer = createRenderer({
+        createElement(tag) {
+          return document.createElement(tag);
+        },
+        setElementText(node, text) {
+          node.textContent = text;
+        },
+        insert(child, parent, anchor) {
+          parent.insertBefore(child, anchor || null);
+        },
+        patchProps(element, key, preValue, nextValue) {
+          if (key === "class") {
+            element.className = nextValue;
+          } else if (key === "style") {
+            const style = nextValue;
+            for (const key in style) {
+              element.style[key] = style[key];
+            }
+          } else if (/^on/.test(key)) {
+            const invokers = element._vei || (element._vei = {});
+            let invoker = invokers[key];
+            const name = key.slice(2).toLowerCase();
+
+            if (nextValue) {
+              if (!invoker) {
+                invoker = (e) => {
+                  if (e.timeStamp < invoker.attached) return;
+                  if (Array.isArray(invoker.value)) {
+                    invoker.value.forEach((fn) => fn(e));
+                  } else {
+                    invoker.value(e);
+                  }
+                };
+                invokers[key] = invoker;
+                invoker.value = nextValue;
+                element.addEventListener(name, invoker);
+              } else {
+                invoker.value = nextValue;
+              }
+            } else if (invoker) {
+              element.removeEventListener(name, invoker);
+            }
+          } else {
+            element.setAttribute(key, nextValue);
+          }
+        },
+      });
+      renderer.render(oldVnode, document.getElementById("root"));
+    </script>
+  </body>
+</html>

@@ -67,6 +67,26 @@
       }
 
       const mutableInstrumenttations = {
+        get(key) {
+          const target = this.raw;
+          const hadKey = target.has(key);
+          track(target, key);
+          if (hadKey) {
+            const res = target.get(key);
+            return typeof res === "object" ? reactive(res) : res;
+          }
+        },
+        forEach(callback, thisArgs) {
+          const target = this.raw;
+          track(target, ITERATE_KEY);
+
+          const wrap = (value) =>
+            typeof value === "object" ? reactive(value) : value;
+
+          return target.forEach((value, key) => {
+            return callback.call(thisArgs, wrap(value), wrap(key));
+          });
+        },
         add(key) {
           const target = this.raw;
           const hadKey = target.has(key);
@@ -84,6 +104,24 @@
           const res = target.delete(key);
           if (hadKey) {
             trigger(target, key, "DELETE");
+          }
+          return res;
+        },
+        set(key, value) {
+          const target = this.raw;
+          const hadKey = target.has(key);
+          const oldValue = target.get(key);
+          target.set(key, value.raw || value);
+
+          if (!hadKey) {
+            trigger(target, key, "ADD");
+          } else {
+            if (
+              oldValue !== value &&
+              (oldValue === oldValue || value === value)
+            ) {
+              trigger(target, key, "SET");
+            }
           }
           return res;
         },
@@ -210,7 +248,12 @@
             });
         }
 
-        if (type === TriggerType.ADD || type === TriggerType.DELETE) {
+        if (
+          type === TriggerType.ADD ||
+          type === TriggerType.DELETE ||
+          (type === TriggerType.SET &&
+            String.prototype.call(target) === "[object Map]")
+        ) {
           iterateEffects &&
             iterateEffects.forEach((effect) => {
               if (effect !== activeEffect) effectsToRuns.add(effect);

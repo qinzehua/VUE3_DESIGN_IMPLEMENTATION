@@ -1,0 +1,70 @@
+项目
+1. 为什么使用nest, 和 express的区别
+2. 怎么实现一个自定义的方法装饰器
+3. 规范制定
+
+
+css:
+1. transition 和 animation 的区别
+2. transform, translate, transition的区别
+3. 改变一个元素的位置用translate 和 margin或者position的区别
+4. 实现一个3行, 每行不同列的布局
+5. font-family 字体的引用机制, 自定义字体怎么
+6. 伪元素和伪类的区别
+7. css选择的器的优先级?
+比如一个id 两个class
+8. style 标签为什么要放在头部
+9. rgba和opacity的透明效果有什么不同
+10. script 标签怎么异步加载
+defer async, defer 渲染完执行, async 下载完执行
+
+js:
+1. [] 的原型链是什么?
+2. 获取时间戳? 获取当前年月日？
+3. 替换一个字符串里面的所有数字? 匹配标签? 正则匹配十六进制的颜色？
+4. 防抖和节流的使用场景
+5. 怎么实现一个div拖拽效果? 或者一个进度条拖动？
+6. 浏览器的同源策略: 怎么算同源, 同源有策略是对哪些内容进行了限制?
+  1. cookie, storage 2. js 操作 dom 3. ajax
+7. array，date 的tostring 和 object.prototypes.tostring 有什么区别？
+8. 重流和重绘的区别和联系?
+  1. 哪些操作会导致重流
+  2. 哪些操作会导致重绘制
+8.1 监听某个dom是否滚动到可视区域？
+9. async await 的原理是什么, 为什么可以实现类似同步的语法
+10. 怎么实现一个 sleep 的效果? 怎么对fs.readfile方法promise化？
+11. 怎么按需加载资源？
+    图片？外部模块？
+
+
+TS:
+1. 一个函数要求第一个参数是一个普通对象，第二个参数是对象的key
+2. pick的实现？omit？
+3. 实现一个工具类型，获取数组的一个值得类型
+4. as const？
+
+vue:
+1. 怎么实现异步更新
+2. 虚拟dom怎么实现挂载的? 怎么转化成字符串形式的标签以便于服务端拼接?
+3. diff
+
+webpack:
+1. css-loader 和 style-loader的作用分别是什么? 他们的使用顺序?
+2. vite热更新的机制
+3. 配置？
+
+工程化：
+1. lint
+2. 部署
+
+
+调试:
+1. vscode 怎么调试网页?
+2. vscode 怎么调试node
+3. 浏览器怎么查看网络请求的发出者
+
+代码优化？
+怎么快速学习新的技术？
+遇到bug怎么快速定位问题？
+
+
