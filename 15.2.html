@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      const State = {
+        initial: 1,
+        tagOpen: 2,
+        tagName: 3,
+        text: 4,
+        tagEnd: 5,
+        tagEndName: 6,
+      };
+
+      function isAlpha(c) {
+        return /[a-zA-Z]/.test(c);
+      }
+
+      function tokenzie(str) {}
+
+      function tokenzie(str) {
+        let currentState = State.initial;
+        const chars = [];
+        const tokens = [];
+
+        while (str) {
+          const char = str[0];
+          switch (currentState) {
+            case State.initial:
+              if (char === "<") {
+                currentState = State.tagOpen;
+                str = str.slice(1);
+              } else if (isAlpha(char)) {
+                currentState = State.text;
+                chars.push(char);
+                str = str.slice(1);
+              }
+              break;
+            case State.tagOpen:
+              if (isAlpha(char)) {
+                currentState = State.tagName;
+                chars.push(char);
+                str = str.slice(1);
+              } else if (char === "/") {
+                currentState = State.tagEnd;
+                str = str.slice(1);
+              }
+              break;
+            case State.tagName:
+              if (isAlpha(char)) {
+                chars.push(char);
+                str = str.slice(1);
+              } else if (char === ">") {
+                currentState = State.initial;
+                tokens.push({
+                  type: "startTag",
+                  tagName: chars.join(""),
+                });
+                chars.length = 0;
+                str = str.slice(1);
+              }
+              break;
+            case State.text:
+              if (isAlpha(char)) {
+                chars.push(char);
+                str = str.slice(1);
+              } else if (char === "<") {
+                currentState = State.tagOpen;
+                tokens.push({
+                  type: "text",
+                  content: chars.join(""),
+                });
+                chars.length = 0;
+                str = str.slice(1);
+              }
+              break;
+            case State.tagEnd:
+              if (isAlpha(char)) {
+                currentState = State.tagEndName;
+                chars.push(char);
+                str = str.slice(1);
+              }
+              break;
+            case State.tagEndName:
+              if (isAlpha(char)) {
+                chars.push(char);
+                str = str.slice(1);
+              } else if (char === ">") {
+                currentState = State.initial;
+                tokens.push({
+                  type: "endTag",
+                  tagName: chars.join(""),
+                });
+                chars.length = 0;
+                str = str.slice(1);
+              }
+              break;
+          }
+        }
+        return tokens;
+      }
+
+      function parser(template) {
+        const tokens = tokenzie(template);
+        const root = {
+          type: "Root",
+          children: [],
+        };
+
+        const elementStack = [root];
+
+        while (tokens.length) {
+          const token = tokens[0];
+          const parent = elementStack[elementStack.length - 1];
+          if (token.type === "startTag") {
+            const elementNode = {
+              type: "Element",
+              tag: token.tagName,
+              children: [],
+            };
+            parent.children.push(elementNode);
+            elementStack.push(elementNode);
+          } else if (token.type === "endTag") {
+            elementStack.pop();
+          } else if (token.type === "text") {
+            const textNode = {
+              type: "Text",
+              content: token.content,
+            };
+            parent.children.push(textNode);
+          }
+          tokens.shift();
+        }
+        return root;
+      }
+
+      function transformElement(node, context) {
+        if ((node.type === "Element", node.tag === "span")) {
+          context.replaceNode({
+            type: "Element",
+            tag: "h1",
+          });
+        }
+      }
+
+      function transformText(node, context) {
+        if (node.type === "Text") {
+          node.content = node.content.toUpperCase();
+        }
+      }
+
+      function transform() {
+        const context = {
+          currentNode: null,
+          parent: null,
+          childIndex: null,
+          replaceNode(node) {
+            context.parent.children[context.childIndex] = node;
+            context.currentNode = node;
+          },
+          nodeTransforms: [transformElement, transformText],
+        };
+        traverseNode(ast, context);
+      }
+
+      function traverseNode(ast, context) {
+        context.currentNode = ast;
+        const { nodeTransforms } = context;
+        for (let i = 0; i < nodeTransforms.length; i++) {
+          nodeTransforms[i](ast);
+        }
+
+        const children = ast.children;
+        if (children && children.length) {
+          for (let i = 0; i < children.length; i++) {
+            context.parent = context.currentNode;
+            context.childIndex = i;
+            traverseNode(children[i], context);
+          }
+        }
+      }
+
+      const ast = parser("<div><span>hello</span>world</div>");
+    </script>
+  </body>
+</html>
